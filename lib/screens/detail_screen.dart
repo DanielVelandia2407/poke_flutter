@@ -13,7 +13,18 @@ class DetailScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     if (pokemon == null) {
-      return const Scaffold(body: Center(child: Text('Pokémon no encontrado')));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset('assets/images/unavailable.png', height: 160),
+              const SizedBox(height: 16),
+              const Text('Pokémon no encontrado'),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -23,7 +34,16 @@ class DetailScreen extends StatelessWidget {
         children: [
           const SizedBox(height: 24),
           Center(
-            child: Image.network(pokemon!.imagenUrl, height: 200, width: 200),
+            child: Image.network(
+              pokemon!.imagenUrl,
+              height: 200,
+              width: 200,
+              errorBuilder: (_, _, _) => Image.asset(
+                'assets/images/error.png',
+                height: 200,
+                width: 200,
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           Text(pokemon!.name, style: theme.textTheme.titleLarge),

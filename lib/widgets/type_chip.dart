@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class TypeChip extends StatelessWidget {
   final String type;
@@ -8,13 +9,33 @@ class TypeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Chip(
+      avatar: SvgPicture.asset(
+        'assets/images/icons/${_iconoDelTipo(type)}.svg',
+        width: 18,
+        height: 18,
+      ),
       label: Text(type),
       backgroundColor: _colorDelTipo(type),
-      // cambiua el radius
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(50),
       ),
     );
+  }
+
+  static String _iconoDelTipo(String tipo) {
+    switch (tipo.toLowerCase()) {
+      case 'fuego':
+        return 'fire';
+      case 'agua':
+        return 'water';
+      case 'planta':
+        return 'grass';
+      case 'eléctrico':
+      case 'electrico':
+        return 'electric';
+      default:
+        return 'normal';
+    }
   }
 
   static Color _colorDelTipo(String tipo) {

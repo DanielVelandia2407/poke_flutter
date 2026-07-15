@@ -26,7 +26,19 @@ class PokemonCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.network(pokemon.imagenUrl, height: 120, width: 120),
+                Flexible(
+                  child: Image.network(
+                    pokemon.imagenUrl,
+                    height: 120,
+                    width: 120,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => Image.asset(
+                      'assets/images/error.png',
+                      height: 120,
+                      width: 120,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Text(pokemon.name, style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),

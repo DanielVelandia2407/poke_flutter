@@ -4,10 +4,15 @@ import '../models/pokemon.dart';
 import '../screens/detail_screen.dart';
 import '../screens/favorites_screen.dart';
 import '../screens/home_screen.dart';
+import '../screens/onboarding_screen.dart';
 
-final appRouter = GoRouter(
-  initialLocation: '/',
+GoRouter createAppRouter({required bool showOnboarding}) => GoRouter(
+  initialLocation: showOnboarding ? '/onboarding' : '/',
   routes: [
+    GoRoute(
+      path: '/onboarding',
+      builder: (_, _) => const OnboardingScreen(),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return AppScaffold(navigationShell: navigationShell);
