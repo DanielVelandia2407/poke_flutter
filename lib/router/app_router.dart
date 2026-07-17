@@ -1,12 +1,18 @@
 import 'package:go_router/go_router.dart';
 import 'package:poke_app/widgets/app_scafold.dart';
+import '../controllers/favorites_controller.dart';
+import '../controllers/pokemons_controller.dart';
 import '../models/pokemon.dart';
 import '../screens/detail_screen.dart';
 import '../screens/favorites_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/onboarding_screen.dart';
 
-GoRouter createAppRouter({required bool showOnboarding}) => GoRouter(
+GoRouter createAppRouter({
+  required bool showOnboarding,
+  required FavoritesController favorites,
+  required PokemonsController pokemons,
+}) => GoRouter(
   initialLocation: showOnboarding ? '/onboarding' : '/',
   routes: [
     GoRoute(
@@ -22,7 +28,8 @@ GoRouter createAppRouter({required bool showOnboarding}) => GoRouter(
           routes: [
             GoRoute(
               path: '/',
-              builder: (_, _) => const HomeScreen(),
+              builder: (_, _) =>
+                  HomeScreen(favorites: favorites, pokemons: pokemons),
               routes: [
                 GoRoute(
                   path: '/pokemon/:id',
@@ -40,7 +47,8 @@ GoRouter createAppRouter({required bool showOnboarding}) => GoRouter(
             GoRoute(
               path: '/favorites',
               name: 'favorites',
-              builder: (_, _) => const FavoritesScreen(),
+              builder: (_, _) =>
+                  FavoritesScreen(favorites: favorites, pokemons: pokemons),
             ),
           ],
         ),

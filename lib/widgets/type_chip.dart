@@ -6,51 +6,64 @@ class TypeChip extends StatelessWidget {
 
   const TypeChip({super.key, required this.type});
 
+  static const _labels = {
+    'normal': 'Normal',
+    'fire': 'Fuego',
+    'water': 'Agua',
+    'grass': 'Planta',
+    'electric': 'Eléctrico',
+    'ice': 'Hielo',
+    'fighting': 'Lucha',
+    'poison': 'Veneno',
+    'ground': 'Tierra',
+    'flying': 'Volador',
+    'psychic': 'Psíquico',
+    'bug': 'Bicho',
+    'rock': 'Roca',
+    'ghost': 'Fantasma',
+    'dragon': 'Dragón',
+    'dark': 'Siniestro',
+    'steel': 'Acero',
+    'fairy': 'Hada',
+  };
+
+  static final _colors = {
+    'normal': Colors.grey.shade300,
+    'fire': Colors.red.shade300,
+    'water': Colors.blue.shade300,
+    'grass': Colors.green.shade300,
+    'electric': Colors.yellow.shade600,
+    'ice': Colors.cyan.shade200,
+    'fighting': Colors.deepOrange.shade300,
+    'poison': Colors.purple.shade300,
+    'ground': Colors.brown.shade300,
+    'flying': Colors.indigo.shade200,
+    'psychic': Colors.pink.shade300,
+    'bug': Colors.lightGreen.shade400,
+    'rock': Colors.grey.shade400,
+    'ghost': Colors.deepPurple.shade300,
+    'dragon': Colors.indigo.shade400,
+    'dark': Colors.blueGrey.shade400,
+    'steel': Colors.blueGrey.shade200,
+    'fairy': Colors.pink.shade200,
+  };
+
   @override
   Widget build(BuildContext context) {
+    final key = _labels.containsKey(type.toLowerCase())
+        ? type.toLowerCase()
+        : 'normal';
     return Chip(
       avatar: SvgPicture.asset(
-        'assets/images/icons/${_iconoDelTipo(type)}.svg',
+        'assets/images/icons/$key.svg',
         width: 18,
         height: 18,
       ),
-      label: Text(type),
-      backgroundColor: _colorDelTipo(type),
+      label: Text(_labels[key]!),
+      backgroundColor: _colors[key],
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(50),
       ),
     );
-  }
-
-  static String _iconoDelTipo(String tipo) {
-    switch (tipo.toLowerCase()) {
-      case 'fuego':
-        return 'fire';
-      case 'agua':
-        return 'water';
-      case 'planta':
-        return 'grass';
-      case 'eléctrico':
-      case 'electrico':
-        return 'electric';
-      default:
-        return 'normal';
-    }
-  }
-
-  static Color _colorDelTipo(String tipo) {
-    switch (tipo.toLowerCase()) {
-      case 'fuego':
-        return Colors.red.shade300;
-      case 'agua':
-        return Colors.blue.shade300;
-      case 'planta':
-        return Colors.green.shade300;
-      case 'eléctrico':
-      case 'electrico':
-        return Colors.yellow.shade600;
-      default:
-        return Colors.grey.shade300;
-    }
   }
 }

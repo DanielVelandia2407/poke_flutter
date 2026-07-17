@@ -13,7 +13,6 @@ class AppScaffold extends StatelessWidget {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: navigationShell.currentIndex,
         onTap: (index) {
-          print('index ===========> $index - currentIndex: ${navigationShell.currentIndex}');
           navigationShell.goBranch(
             index,
             initialLocation: index == navigationShell.currentIndex,

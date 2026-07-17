@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const seed = Color(0xFFE3350D); // rojo Pokédex
+  static const seed = Color(0xFFE3350D);
 
   static final ThemeData light = ThemeData(
     colorScheme: ColorScheme.fromSeed(
