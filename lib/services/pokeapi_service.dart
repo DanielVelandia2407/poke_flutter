@@ -4,11 +4,12 @@ import '../models/pokemon.dart';
 
 class PokeApiService {
   static const _baseUrl = 'https://pokeapi.co/api/v2';
+  static const _timeout = Duration(seconds: 10);
 
-  Future<List<Pokemon>> fetchPokemons({int limit = 30}) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/pokemon?limit=$limit'),
-    );
+  Future<List<Pokemon>> fetchPokemons({int offset = 0, int limit = 20}) async {
+    final response = await http
+        .get(Uri.parse('$_baseUrl/pokemon?offset=$offset&limit=$limit'))
+        .timeout(_timeout);
     if (response.statusCode != 200) {
       throw http.ClientException('Error ${response.statusCode}');
     }
@@ -20,7 +21,7 @@ class PokeApiService {
   }
 
   Future<Pokemon> _fetchDetail(String url) async {
-    final response = await http.get(Uri.parse(url));
+    final response = await http.get(Uri.parse(url)).timeout(_timeout);
     if (response.statusCode != 200) {
       throw http.ClientException('Error ${response.statusCode}');
     }

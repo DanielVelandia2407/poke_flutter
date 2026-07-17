@@ -42,7 +42,7 @@ class PokemonCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(pokemon.name, style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
-                TypeChip(type: pokemon.type),
+                if (pokemon.type.isNotEmpty) TypeChip(type: pokemon.type),
               ],
             ),
           ),
