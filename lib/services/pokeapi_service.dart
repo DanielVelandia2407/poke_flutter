@@ -20,6 +20,22 @@ class PokeApiService {
     );
   }
 
+  Future<List<({String name, String url})>> fetchIndex() async {
+    final response = await http
+        .get(Uri.parse('$_baseUrl/pokemon?limit=2000'))
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw http.ClientException('Error ${response.statusCode}');
+    }
+    final results = (jsonDecode(response.body)['results'] as List)
+        .cast<Map<String, dynamic>>();
+    return results
+        .map((r) => (name: r['name'] as String, url: r['url'] as String))
+        .toList();
+  }
+
+  Future<Pokemon> fetchDetail(String url) => _fetchDetail(url);
+
   Future<Pokemon> _fetchDetail(String url) async {
     final response = await http.get(Uri.parse(url)).timeout(_timeout);
     if (response.statusCode != 200) {
