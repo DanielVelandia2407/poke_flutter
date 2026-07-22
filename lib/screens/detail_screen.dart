@@ -21,145 +21,50 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   late Future<PokemonDetail> _detailFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _detailFuture = widget.service.fetchPokemonDetail(widget.id);
-  }
-
-  void _retry() {
-    setState(() {
-      _detailFuture = widget.service.fetchPokemonDetail(widget.id);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<PokemonDetail>(
-      future: _detailFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: ErrorView(error: snapshot.error, onRetry: _retry),
-          );
-        }
-
-        return Scaffold(
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-          ),
-          body: _DetailView(detail: snapshot.data!, service: widget.service),
-        );
-      },
-    );
-  }
-}
-
-class _DetailView extends StatelessWidget {
-  final PokemonDetail detail;
-  final PokeApiService service;
-
-  const _DetailView({required this.detail, required this.service});
-
-  @override
-  Widget build(BuildContext context) {
-    final baseColor = TypeChip.colorOf(detail.types.first);
-    final darkColor = Color.lerp(baseColor, Colors.black, 0.45)!;
-
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        _Header(
-          detail: detail,
-          baseColor: baseColor,
-          darkColor: darkColor,
-          service: service,
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _InfoRow(detail: detail),
-              const SizedBox(height: 16),
-              _SectionCard(
-                title: 'Estadísticas base',
-                child: Column(
-                  children: [
-                    for (final stat in detail.stats) _StatRow(stat: stat),
-                  ],
-                ),
-              ),
-              _SectionCard(
-                title: 'Efectividad de tipos',
-                child: _EffectivenessSection(
-                  types: detail.types,
-                  service: service,
-                ),
-              ),
-              _SectionCard(
-                title: 'Movimientos destacados',
-                child: _MovesSection(
-                  moves: detail.moves.take(4).toList(),
-                  service: service,
-                ),
-              ),
-              _SectionCard(
-                title: 'Habilidades',
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final ability in detail.abilities)
-                      _AbilityPill(name: ability, color: baseColor),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Header extends StatefulWidget {
-  final PokemonDetail detail;
-  final Color baseColor;
-  final Color darkColor;
-  final PokeApiService service;
-
-  const _Header({
-    required this.detail,
-    required this.baseColor,
-    required this.darkColor,
-    required this.service,
-  });
-
-  @override
-  State<_Header> createState() => _HeaderState();
-}
-
-class _HeaderState extends State<_Header> {
-  late final Future<List<EvolutionStage>> _chainFuture;
+  PokemonDetail? _lastDetail;
+  List<EvolutionStage>? _chain;
   PageController? _pageController;
   final _currentPage = ValueNotifier<int>(0);
 
   @override
   void initState() {
     super.initState();
-    _chainFuture = widget.service.fetchEvolutionChain(widget.detail.id);
+    _detailFuture = widget.service.fetchPokemonDetail(widget.id);
+    _loadChain();
+  }
+
+  void _loadChain() {
+    widget.service.fetchEvolutionChain(widget.id).then((chain) {
+      if (!mounted) return;
+      if (chain.length <= 1) {
+        setState(() => _chain = chain);
+        return;
+      }
+      final idx = chain.indexWhere((s) => s.id == widget.id);
+      final safeIdx = idx < 0 ? 0 : idx;
+      final controller = PageController(viewportFraction: 0.72, initialPage: safeIdx);
+      controller.addListener(() {
+        final page = controller.page?.round() ?? 0;
+        if (page != _currentPage.value) {
+          _currentPage.value = page;
+          setState(() {
+            _detailFuture = widget.service.fetchPokemonDetail(chain[page].id);
+          });
+        }
+      });
+      setState(() {
+        _chain = chain;
+        _currentPage.value = safeIdx;
+        _pageController = controller;
+      });
+    }).catchError((_) {});
+  }
+
+  void _retry() {
+    setState(() {
+      _lastDetail = null;
+      _detailFuture = widget.service.fetchPokemonDetail(widget.id);
+    });
   }
 
   @override
@@ -169,19 +74,126 @@ class _HeaderState extends State<_Header> {
     super.dispose();
   }
 
-  void _initController(List<EvolutionStage> chain) {
-    if (_pageController != null) return;
-    final idx = chain.indexWhere((s) => s.id == widget.detail.id);
-    final safeIdx = idx < 0 ? 0 : idx;
-    _currentPage.value = safeIdx;
-    _pageController = PageController(viewportFraction: 0.72, initialPage: safeIdx)
-      ..addListener(() {
-        final page = _pageController!.page?.round() ?? 0;
-        if (page != _currentPage.value) {
-          _currentPage.value = page;
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PokemonDetail>(
+      future: _detailFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) _lastDetail = snapshot.data;
+
+        if (_lastDetail == null) {
+          if (snapshot.hasError) {
+            return Scaffold(
+              appBar: AppBar(),
+              body: ErrorView(error: snapshot.error, onRetry: _retry),
+            );
+          }
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: CircularProgressIndicator()),
+          );
         }
-      });
+
+        final detail = _lastDetail!;
+        final baseColor = TypeChip.colorOf(detail.types.first);
+        final darkColor = Color.lerp(baseColor, Colors.black, 0.45)!;
+        final isRefreshing = snapshot.connectionState == ConnectionState.waiting;
+
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+          ),
+          body: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _Header(
+                detail: detail,
+                baseColor: baseColor,
+                darkColor: darkColor,
+                chain: _chain,
+                pageController: _pageController,
+                currentPage: _currentPage,
+              ),
+              if (isRefreshing)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _InfoRow(detail: detail),
+                      const SizedBox(height: 16),
+                      _SectionCard(
+                        title: 'Estadísticas base',
+                        child: Column(
+                          children: [
+                            for (final stat in detail.stats) _StatRow(stat: stat),
+                          ],
+                        ),
+                      ),
+                      _SectionCard(
+                        title: 'Efectividad de tipos',
+                        child: _EffectivenessSection(
+                          key: ValueKey('eff-${detail.id}'),
+                          types: detail.types,
+                          service: widget.service,
+                        ),
+                      ),
+                      _SectionCard(
+                        title: 'Movimientos destacados',
+                        child: _MovesSection(
+                          key: ValueKey('moves-${detail.id}'),
+                          moves: detail.moves.take(4).toList(),
+                          service: widget.service,
+                        ),
+                      ),
+                      _SectionCard(
+                        title: 'Habilidades',
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final ability in detail.abilities)
+                              _AbilityPill(name: ability, color: baseColor),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
+}
+
+class _Header extends StatelessWidget {
+  final PokemonDetail detail;
+  final Color baseColor;
+  final Color darkColor;
+  final List<EvolutionStage>? chain;
+  final PageController? pageController;
+  final ValueNotifier<int> currentPage;
+
+  const _Header({
+    required this.detail,
+    required this.baseColor,
+    required this.darkColor,
+    required this.chain,
+    required this.pageController,
+    required this.currentPage,
+  });
+
+  bool get _hasChain =>
+      chain != null && chain!.length > 1 && pageController != null;
 
   @override
   Widget build(BuildContext context) {
@@ -193,48 +205,39 @@ class _HeaderState extends State<_Header> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [widget.baseColor, widget.darkColor],
+          colors: [baseColor, darkColor],
         ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
-      child: FutureBuilder<List<EvolutionStage>>(
-        future: _chainFuture,
-        builder: (context, snapshot) {
-          final chain = snapshot.data;
-          final hasChain = chain != null && chain.length > 1;
-
-          if (hasChain) _initController(chain);
-
-          return Column(
-            children: [
-              SizedBox(
-                height: topPadding + 260,
-                child: Padding(
-                  padding: EdgeInsets.only(top: topPadding),
-                  child: hasChain ? _buildCarousel(chain) : _buildSingleImage(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Column(
-                  children: [
-                    _buildNameSection(theme, chain),
-                    if (hasChain) ...[
-                      const SizedBox(height: 14),
-                      _buildDots(chain),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+      child: Column(
+        children: [
+          SizedBox(
+            height: topPadding + 260,
+            child: Padding(
+              padding: EdgeInsets.only(top: topPadding),
+              child: _hasChain ? _buildCarousel(context) : _buildSingleImage(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              children: [
+                _buildNameSection(theme),
+                if (_hasChain) ...[
+                  const SizedBox(height: 14),
+                  _buildDots(),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildCarousel(List<EvolutionStage> chain) {
+  Widget _buildCarousel(BuildContext context) {
+    final chainList = chain!;
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -244,21 +247,21 @@ class _HeaderState extends State<_Header> {
           color: Colors.white.withValues(alpha: 0.15),
         ),
         PageView.builder(
-          controller: _pageController,
+          controller: pageController,
           clipBehavior: Clip.none,
-          itemCount: chain.length,
+          itemCount: chainList.length,
           itemBuilder: (context, index) {
-            final stage = chain[index];
+            final stage = chainList[index];
             return GestureDetector(
-              onTap: stage.id == widget.detail.id
+              onTap: stage.id == detail.id
                   ? null
                   : () => context.push('/pokemon/${stage.id}'),
               child: AnimatedBuilder(
-                animation: _pageController!,
+                animation: pageController!,
                 builder: (context, child) {
-                  final page = _pageController!.hasClients
-                      ? (_pageController!.page ?? _currentPage.value.toDouble())
-                      : _currentPage.value.toDouble();
+                  final page = pageController!.hasClients
+                      ? (pageController!.page ?? currentPage.value.toDouble())
+                      : currentPage.value.toDouble();
                   final diff = (page - index).abs().clamp(0.0, 1.0);
                   return Transform.scale(
                     scale: 1.0 - diff * 0.28,
@@ -290,7 +293,7 @@ class _HeaderState extends State<_Header> {
           color: Colors.white.withValues(alpha: 0.15),
         ),
         Image.network(
-          widget.detail.imageUrl,
+          detail.imageUrl,
           height: 220,
           errorBuilder: (_, _, _) =>
               Image.asset('assets/images/error.png', height: 200),
@@ -299,24 +302,24 @@ class _HeaderState extends State<_Header> {
     );
   }
 
-  Widget _buildNameSection(ThemeData theme, List<EvolutionStage>? chain) {
-    if (chain == null || chain.length <= 1) {
+  Widget _buildNameSection(ThemeData theme) {
+    if (!_hasChain) {
       return _buildNameContent(
         theme,
-        name: widget.detail.name,
-        id: widget.detail.id,
-        types: widget.detail.types,
+        name: detail.name,
+        id: detail.id,
+        types: detail.types,
       );
     }
     return ValueListenableBuilder<int>(
-      valueListenable: _currentPage,
+      valueListenable: currentPage,
       builder: (context, page, _) {
-        final stage = chain[page];
+        final stage = chain![page];
         return _buildNameContent(
           theme,
           name: stage.name,
           id: stage.id,
-          types: stage.id == widget.detail.id ? widget.detail.types : null,
+          types: stage.id == detail.id ? detail.types : null,
         );
       },
     );
@@ -363,7 +366,7 @@ class _HeaderState extends State<_Header> {
         ] else ...[
           const SizedBox(height: 8),
           Text(
-            'Toca para ver detalle completo',
+            'Cargando...',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.65),
               fontSize: 13,
@@ -374,21 +377,24 @@ class _HeaderState extends State<_Header> {
     );
   }
 
-  Widget _buildDots(List<EvolutionStage> chain) {
+  Widget _buildDots() {
+    final chainList = chain!;
     return ValueListenableBuilder<int>(
-      valueListenable: _currentPage,
+      valueListenable: currentPage,
       builder: (context, current, _) {
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            for (int i = 0; i < chain.length; i++)
+            for (int i = 0; i < chainList.length; i++)
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 width: current == i ? 20 : 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: current == i ? 1.0 : 0.4),
+                  color: Colors.white.withValues(
+                    alpha: current == i ? 1.0 : 0.4,
+                  ),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -550,7 +556,11 @@ class _EffectivenessSection extends StatefulWidget {
   final List<String> types;
   final PokeApiService service;
 
-  const _EffectivenessSection({required this.types, required this.service});
+  const _EffectivenessSection({
+    super.key,
+    required this.types,
+    required this.service,
+  });
 
   @override
   State<_EffectivenessSection> createState() => _EffectivenessSectionState();
@@ -651,7 +661,11 @@ class _MovesSection extends StatefulWidget {
   final List<({String name, String url})> moves;
   final PokeApiService service;
 
-  const _MovesSection({required this.moves, required this.service});
+  const _MovesSection({
+    super.key,
+    required this.moves,
+    required this.service,
+  });
 
   @override
   State<_MovesSection> createState() => _MovesSectionState();
