@@ -7,6 +7,9 @@ class PokemonDetail {
   final List<String> types;
   final List<String> abilities;
   final List<PokemonStat> stats;
+  final int height;
+  final int weight;
+  final List<({String name, String url})> moves;
 
   const PokemonDetail({
     required this.id,
@@ -15,6 +18,9 @@ class PokemonDetail {
     required this.types,
     required this.abilities,
     required this.stats,
+    required this.height,
+    required this.weight,
+    required this.moves,
   });
 
   factory PokemonDetail.fromJson(Map<String, dynamic> json) {
@@ -34,6 +40,16 @@ class PokemonDetail {
           .toList(),
       stats: (json['stats'] as List)
           .map((item) => PokemonStat.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      height: json['height'] as int,
+      weight: json['weight'] as int,
+      moves: (json['moves'] as List)
+          .map(
+            (item) => (
+              name: item['move']['name'] as String,
+              url: item['move']['url'] as String,
+            ),
+          )
           .toList(),
     );
   }

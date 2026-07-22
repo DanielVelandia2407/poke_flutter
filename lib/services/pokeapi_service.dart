@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/move.dart';
 import '../models/pokemon.dart';
 import '../models/pokemon_detail.dart';
+import '../models/type_relations.dart';
 
 class PokeApiService {
   static const _baseUrl = 'https://pokeapi.co/api/v2';
@@ -47,6 +49,26 @@ class PokeApiService {
     return PokemonDetail.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  Future<TypeRelations> fetchTypeRelations(String type) async {
+    final response = await http
+        .get(Uri.parse('$_baseUrl/type/$type'))
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw http.ClientException('Error ${response.statusCode}');
+    }
+    return TypeRelations.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<Move> fetchMove(String url) async {
+    final response = await http.get(Uri.parse(url)).timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw http.ClientException('Error ${response.statusCode}');
+    }
+    return Move.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<Pokemon> _fetchDetail(String url) async {
