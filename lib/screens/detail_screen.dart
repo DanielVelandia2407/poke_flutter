@@ -419,13 +419,19 @@ class _EvolutionImageCell extends StatefulWidget {
   State<_EvolutionImageCell> createState() => _EvolutionImageCellState();
 }
 
-class _EvolutionImageCellState extends State<_EvolutionImageCell> {
+class _EvolutionImageCellState extends State<_EvolutionImageCell>
+    with AutomaticKeepAliveClientMixin {
   late List<PokemonVariant> _variants;
   int _currentVariant = 0;
+  late final PageController _variantController;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _variantController = PageController();
     _variants = [
       PokemonVariant(label: 'Normal', imageUrl: widget.stage.imageUrl),
       PokemonVariant(label: 'Shiny', imageUrl: widget.stage.shinyImageUrl),
@@ -435,17 +441,40 @@ class _EvolutionImageCellState extends State<_EvolutionImageCell> {
     });
   }
 
+  @override
+  void dispose() {
+    _variantController.dispose();
+    super.dispose();
+  }
+
+  void _onSwipe(DragEndDetails details) {
+    final v = details.primaryVelocity ?? 0;
+    if (v < -300 && _currentVariant < _variants.length - 1) {
+      _variantController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else if (v > 300 && _currentVariant > 0) {
+      _variantController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   Widget _buildContent() {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
+      onVerticalDragEnd: _onSwipe,
       child: Stack(
         fit: StackFit.expand,
-        alignment: Alignment.center,
         children: [
           PageView.builder(
             key: PageStorageKey('variants-${widget.stage.id}'),
+            controller: _variantController,
             scrollDirection: Axis.vertical,
-            physics: const ClampingScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: _variants.length,
             onPageChanged: (p) => setState(() => _currentVariant = p),
             itemBuilder: (_, i) => Center(
@@ -461,20 +490,24 @@ class _EvolutionImageCellState extends State<_EvolutionImageCell> {
           if (_currentVariant > 0)
             Positioned(
               bottom: 6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _currentVariant == 1
-                      ? '✨ Shiny'
-                      : _variants[_currentVariant].label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _currentVariant == 1
+                        ? '✨ Shiny'
+                        : _variants[_currentVariant].label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -510,6 +543,7 @@ class _EvolutionImageCellState extends State<_EvolutionImageCell> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final content = _buildContent();
     if (widget.outerController == null) return content;
     return AnimatedBuilder(
