@@ -43,15 +43,6 @@ class _DetailScreenState extends State<DetailScreen> {
       final idx = chain.indexWhere((s) => s.id == widget.id);
       final safeIdx = idx < 0 ? 0 : idx;
       final controller = PageController(viewportFraction: 0.72, initialPage: safeIdx);
-      controller.addListener(() {
-        final page = controller.page?.round() ?? 0;
-        if (page != _currentPage.value) {
-          _currentPage.value = page;
-          setState(() {
-            _detailFuture = widget.service.fetchPokemonDetail(chain[page].id);
-          });
-        }
-      });
       setState(() {
         _chain = chain;
         _currentPage.value = safeIdx;
@@ -115,6 +106,15 @@ class _DetailScreenState extends State<DetailScreen> {
                 chain: _chain,
                 pageController: _pageController,
                 currentPage: _currentPage,
+                onPageChanged: _chain == null
+                    ? null
+                    : (int page) {
+                        _currentPage.value = page;
+                        setState(() {
+                          _detailFuture = widget.service
+                              .fetchPokemonDetail(_chain![page].id);
+                        });
+                      },
               ),
               if (isRefreshing)
                 const Padding(
@@ -182,6 +182,7 @@ class _Header extends StatelessWidget {
   final List<EvolutionStage>? chain;
   final PageController? pageController;
   final ValueNotifier<int> currentPage;
+  final void Function(int)? onPageChanged;
 
   const _Header({
     required this.detail,
@@ -190,6 +191,7 @@ class _Header extends StatelessWidget {
     required this.chain,
     required this.pageController,
     required this.currentPage,
+    required this.onPageChanged,
   });
 
   bool get _hasChain =>
@@ -247,8 +249,10 @@ class _Header extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.15),
         ),
         PageView.builder(
+          key: const PageStorageKey('evo-carousel'),
           controller: pageController,
           clipBehavior: Clip.none,
+          onPageChanged: onPageChanged,
           itemCount: chainList.length,
           itemBuilder: (context, index) {
             final stage = chainList[index];
