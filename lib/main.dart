@@ -12,13 +12,15 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final showOnboarding = !(prefs.getBool('onboarding_seen') ?? false);
   final favorites = FavoritesController(prefs);
-  final pokemons = PokemonsController(PokeApiService())..load();
+  final service = PokeApiService();
+  final pokemons = PokemonsController(service)..load();
   runApp(
     PokeFlutterApp(
       router: createAppRouter(
         showOnboarding: showOnboarding,
         favorites: favorites,
         pokemons: pokemons,
+        service: service,
       ),
     ),
   );

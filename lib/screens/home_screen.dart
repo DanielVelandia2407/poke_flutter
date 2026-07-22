@@ -47,10 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadMore() async {
-    final ok = await widget.pokemons.loadMore();
-    if (!ok && mounted) {
+    final error = await widget.pokemons.loadMore();
+    if (error != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No pudimos cargar más Pokémon')),
+        SnackBar(content: Text(friendlyErrorMessage(error))),
       );
     }
   }
@@ -71,10 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (_, index) {
               final pokemon = pokemons[index];
               return GestureDetector(
-                onTap: () => context.push(
-                  '/pokemon/${pokemon.id}',
-                  extra: pokemon,
-                ),
+                onTap: () => context.push('/pokemon/${pokemon.id}'),
                 child: PokemonCard(
                   pokemon: pokemon,
                   isFavorite: widget.favorites.contains(pokemon.id),
@@ -94,7 +91,10 @@ class _HomeScreenState extends State<HomeScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (widget.pokemons.searchFailed) {
-      return ErrorView(onRetry: () => widget.pokemons.search(_searchQuery));
+      return ErrorView(
+        error: widget.pokemons.searchFailure,
+        onRetry: () => widget.pokemons.search(_searchQuery),
+      );
     }
     if (widget.pokemons.searchResults.isEmpty) {
       return const Center(child: Text('Ningún Pokémon coincide'));
@@ -136,7 +136,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 if (widget.pokemons.error != null) {
-                  return ErrorView(onRetry: widget.pokemons.load);
+                  return ErrorView(
+                    error: widget.pokemons.error,
+                    onRetry: widget.pokemons.load,
+                  );
                 }
 
                 return _grid(

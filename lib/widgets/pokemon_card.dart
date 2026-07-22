@@ -28,7 +28,7 @@ class PokemonCard extends StatelessWidget {
               children: [
                 Flexible(
                   child: Image.network(
-                    pokemon.imagenUrl,
+                    pokemon.imageUrl,
                     height: 120,
                     width: 120,
                     fit: BoxFit.contain,

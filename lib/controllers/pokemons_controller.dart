@@ -8,25 +8,26 @@ class PokemonsController extends ChangeNotifier {
   List<Pokemon> _pokemons = [];
   bool _loading = false;
   bool _loadingMore = false;
-  String? _error;
+  Object? _error;
 
   List<({String name, String url})>? _index;
   List<Pokemon> _searchResults = [];
   String _query = '';
   bool _searching = false;
-  bool _searchFailed = false;
+  Object? _searchFailure;
 
   PokemonsController(this._service);
 
   List<Pokemon> get pokemons => _pokemons;
   bool get loading => _loading;
   bool get loadingMore => _loadingMore;
-  String? get error => _error;
+  Object? get error => _error;
 
   List<Pokemon> get searchResults => _searchResults;
   String get query => _query;
   bool get searching => _searching;
-  bool get searchFailed => _searchFailed;
+  bool get searchFailed => _searchFailure != null;
+  Object? get searchFailure => _searchFailure;
 
   Future<void> load() async {
     _loading = true;
@@ -34,8 +35,8 @@ class PokemonsController extends ChangeNotifier {
     notifyListeners();
     try {
       _pokemons = await _service.fetchPokemons();
-    } catch (_) {
-      _error = 'No pudimos cargar los Pokémon';
+    } catch (e) {
+      _error = e;
     }
     _loading = false;
     notifyListeners();
@@ -46,12 +47,12 @@ class PokemonsController extends ChangeNotifier {
     if (query.isEmpty) {
       _searchResults = [];
       _searching = false;
-      _searchFailed = false;
+      _searchFailure = null;
       notifyListeners();
       return;
     }
     _searching = true;
-    _searchFailed = false;
+    _searchFailure = null;
     notifyListeners();
     try {
       _index ??= await _service.fetchIndex();
@@ -71,9 +72,9 @@ class PokemonsController extends ChangeNotifier {
       );
       if (_query != query) return;
       _searchResults = results;
-    } catch (_) {
+    } catch (e) {
       if (_query != query) return;
-      _searchFailed = true;
+      _searchFailure = e;
     } finally {
       if (_query == query) {
         _searching = false;
@@ -82,15 +83,15 @@ class PokemonsController extends ChangeNotifier {
     }
   }
 
-  Future<bool> loadMore() async {
+  Future<Object?> loadMore() async {
     _loadingMore = true;
     notifyListeners();
     try {
       final more = await _service.fetchPokemons(offset: _pokemons.length);
       _pokemons = [..._pokemons, ...more];
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return e;
     } finally {
       _loadingMore = false;
       notifyListeners();

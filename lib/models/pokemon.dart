@@ -2,13 +2,13 @@ class Pokemon {
   final String id;
   final String name;
   final String type;
-  final String imagenUrl;
+  final String imageUrl;
 
   const Pokemon({
     required this.id,
     required this.name,
     required this.type,
-    required this.imagenUrl,
+    required this.imageUrl,
   });
 
   factory Pokemon.fromApi(Map<String, dynamic> json) {
@@ -21,7 +21,7 @@ class Pokemon {
       id: (json['id'] as int).toString(),
       name: name[0].toUpperCase() + name.substring(1),
       type: types.first['type']['name'] as String,
-      imagenUrl: artwork ?? '',
+      imageUrl: artwork ?? '',
     );
   }
 }

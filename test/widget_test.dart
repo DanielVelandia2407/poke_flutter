@@ -11,12 +11,14 @@ void main() {
   testWidgets('muestra el onboarding la primera vez', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final service = PokeApiService();
     await tester.pumpWidget(
       PokeFlutterApp(
         router: createAppRouter(
           showOnboarding: true,
           favorites: FavoritesController(prefs),
-          pokemons: PokemonsController(PokeApiService()),
+          pokemons: PokemonsController(service),
+          service: service,
         ),
       ),
     );

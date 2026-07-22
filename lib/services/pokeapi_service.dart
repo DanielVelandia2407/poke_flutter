@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/pokemon.dart';
+import '../models/pokemon_detail.dart';
 
 class PokeApiService {
   static const _baseUrl = 'https://pokeapi.co/api/v2';
@@ -35,6 +36,18 @@ class PokeApiService {
   }
 
   Future<Pokemon> fetchDetail(String url) => _fetchDetail(url);
+
+  Future<PokemonDetail> fetchPokemonDetail(String id) async {
+    final response = await http
+        .get(Uri.parse('$_baseUrl/pokemon/$id'))
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw http.ClientException('Error ${response.statusCode}');
+    }
+    return PokemonDetail.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
 
   Future<Pokemon> _fetchDetail(String url) async {
     final response = await http.get(Uri.parse(url)).timeout(_timeout);
