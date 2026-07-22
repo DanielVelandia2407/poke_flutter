@@ -17,47 +17,95 @@ class PokemonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final baseColor = TypeChip.colorOf(pokemon.type);
+    final darkColor = Color.lerp(baseColor, Colors.black, 0.45)!;
+
     return Card(
-      child: Stack(
-        alignment: .center,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Image.network(
-                    pokemon.imageUrl,
-                    height: 120,
-                    width: 120,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => Image.asset(
-                      'assets/images/error.png',
-                      height: 120,
-                      width: 120,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(pokemon.name, style: theme.textTheme.titleLarge),
-                const SizedBox(height: 8),
-                if (pokemon.type.isNotEmpty) TypeChip(type: pokemon.type),
-              ],
-            ),
+      elevation: 6,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [baseColor, darkColor],
           ),
-          Positioned(
-            top: 4,
-            right: 4,
-            child: IconButton(
-              icon: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? Colors.red : null,
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -25,
+              bottom: -25,
+              child: Icon(
+                Icons.catching_pokemon,
+                size: 140,
+                color: Colors.white.withValues(alpha: 0.12),
               ),
-              onPressed: onFavoriteTap,
             ),
-          ),
-        ],
+            Positioned(
+              top: 12,
+              left: 14,
+              child: Text(
+                '#${pokemon.id.padLeft(3, '0')}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 28, 12, 12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Image.network(
+                        pokemon.imageUrl,
+                        height: 120,
+                        width: 120,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => Image.asset(
+                          'assets/images/error.png',
+                          height: 120,
+                          width: 120,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      pokemon.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        shadows: const [
+                          Shadow(blurRadius: 6, color: Colors.black45),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (pokemon.type.isNotEmpty) TypeChip(type: pokemon.type),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite
+                      ? Colors.redAccent
+                      : Colors.white.withValues(alpha: 0.9),
+                ),
+                onPressed: onFavoriteTap,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

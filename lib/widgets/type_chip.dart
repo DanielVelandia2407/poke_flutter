@@ -48,6 +48,9 @@ class TypeChip extends StatelessWidget {
     'fairy': Colors.pink.shade200,
   };
 
+  static Color colorOf(String type) =>
+      _colors[type.toLowerCase()] ?? _colors['normal']!;
+
   @override
   Widget build(BuildContext context) {
     final key = _labels.containsKey(type.toLowerCase())
