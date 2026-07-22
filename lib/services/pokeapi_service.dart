@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/evolution_stage.dart';
 import '../models/move.dart';
+import '../models/pokemon_variant.dart';
 import '../models/pokemon.dart';
 import '../models/pokemon_detail.dart';
 import '../models/type_relations.dart';
@@ -70,6 +71,36 @@ class PokeApiService {
       throw http.ClientException('Error ${response.statusCode}');
     }
     return Move.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<List<PokemonVariant>> fetchVariants(String pokemonId) async {
+    const base =
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
+    final variants = <PokemonVariant>[
+      PokemonVariant(label: 'Normal', imageUrl: '$base/$pokemonId.png'),
+      PokemonVariant(label: 'Shiny', imageUrl: '$base/shiny/$pokemonId.png'),
+    ];
+    try {
+      final res = await http
+          .get(Uri.parse('$_baseUrl/pokemon-species/$pokemonId'))
+          .timeout(_timeout);
+      if (res.statusCode != 200) return variants;
+      for (final v in (jsonDecode(res.body) as Map<String, dynamic>)['varieties']
+          as List) {
+        if (v['is_default'] as bool) continue;
+        final name = v['pokemon']['name'] as String;
+        final url = v['pokemon']['url'] as String;
+        final id = url.split('/').where((s) => s.isNotEmpty).last;
+        variants.add(PokemonVariant(
+          label: name
+              .split('-')
+              .map((w) => w[0].toUpperCase() + w.substring(1))
+              .join(' '),
+          imageUrl: '$base/$id.png',
+        ));
+      }
+    } catch (_) {}
+    return variants;
   }
 
   Future<List<EvolutionStage>> fetchEvolutionChain(String pokemonId) async {

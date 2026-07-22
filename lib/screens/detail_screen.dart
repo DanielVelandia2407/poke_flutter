@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/evolution_stage.dart';
 import '../models/move.dart';
+import '../models/pokemon_variant.dart';
 import '../models/pokemon_detail.dart';
 import '../models/pokemon_stat.dart';
 import '../models/type_relations.dart';
@@ -106,6 +107,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 chain: _chain,
                 pageController: _pageController,
                 currentPage: _currentPage,
+                service: widget.service,
                 onPageChanged: _chain == null
                     ? null
                     : (int page) {
@@ -183,6 +185,7 @@ class _Header extends StatelessWidget {
   final PageController? pageController;
   final ValueNotifier<int> currentPage;
   final void Function(int)? onPageChanged;
+  final PokeApiService service;
 
   const _Header({
     required this.detail,
@@ -192,6 +195,7 @@ class _Header extends StatelessWidget {
     required this.pageController,
     required this.currentPage,
     required this.onPageChanged,
+    required this.service,
   });
 
   bool get _hasChain =>
@@ -256,30 +260,15 @@ class _Header extends StatelessWidget {
           itemCount: chainList.length,
           itemBuilder: (context, index) {
             final stage = chainList[index];
-            return GestureDetector(
+            return _EvolutionImageCell(
+              key: ValueKey('cell-${stage.id}'),
+              stage: stage,
+              service: service,
+              outerController: pageController,
+              stageIndex: index,
               onTap: stage.id == detail.id
                   ? null
                   : () => context.push('/pokemon/${stage.id}'),
-              child: AnimatedBuilder(
-                animation: pageController!,
-                builder: (context, child) {
-                  final page = pageController!.hasClients
-                      ? (pageController!.page ?? currentPage.value.toDouble())
-                      : currentPage.value.toDouble();
-                  final diff = (page - index).abs().clamp(0.0, 1.0);
-                  return Transform.scale(
-                    scale: 1.0 - diff * 0.28,
-                    child: Opacity(opacity: 1.0 - diff * 0.55, child: child),
-                  );
-                },
-                child: Image.network(
-                  stage.imageUrl,
-                  height: 220,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) =>
-                      Image.asset('assets/images/error.png', height: 200),
-                ),
-              ),
             );
           },
         ),
@@ -296,11 +285,12 @@ class _Header extends StatelessWidget {
           size: 240,
           color: Colors.white.withValues(alpha: 0.15),
         ),
-        Image.network(
-          detail.imageUrl,
-          height: 220,
-          errorBuilder: (_, _, _) =>
-              Image.asset('assets/images/error.png', height: 200),
+        _EvolutionImageCell(
+          stage: EvolutionStage(id: detail.id, name: detail.name),
+          service: service,
+          outerController: null,
+          stageIndex: 0,
+          onTap: null,
         ),
       ],
     );
@@ -403,6 +393,136 @@ class _Header extends StatelessWidget {
                 ),
               ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _EvolutionImageCell extends StatefulWidget {
+  final EvolutionStage stage;
+  final PokeApiService service;
+  final PageController? outerController;
+  final int stageIndex;
+  final VoidCallback? onTap;
+
+  const _EvolutionImageCell({
+    super.key,
+    required this.stage,
+    required this.service,
+    required this.outerController,
+    required this.stageIndex,
+    required this.onTap,
+  });
+
+  @override
+  State<_EvolutionImageCell> createState() => _EvolutionImageCellState();
+}
+
+class _EvolutionImageCellState extends State<_EvolutionImageCell> {
+  late List<PokemonVariant> _variants;
+  int _currentVariant = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _variants = [
+      PokemonVariant(label: 'Normal', imageUrl: widget.stage.imageUrl),
+      PokemonVariant(label: 'Shiny', imageUrl: widget.stage.shinyImageUrl),
+    ];
+    widget.service.fetchVariants(widget.stage.id).then((variants) {
+      if (mounted) setState(() => _variants = variants);
+    });
+  }
+
+  Widget _buildContent() {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.center,
+        children: [
+          PageView.builder(
+            key: PageStorageKey('variants-${widget.stage.id}'),
+            scrollDirection: Axis.vertical,
+            physics: const ClampingScrollPhysics(),
+            itemCount: _variants.length,
+            onPageChanged: (p) => setState(() => _currentVariant = p),
+            itemBuilder: (_, i) => Center(
+              child: Image.network(
+                _variants[i].imageUrl,
+                height: 210,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) =>
+                    Image.asset('assets/images/error.png', height: 180),
+              ),
+            ),
+          ),
+          if (_currentVariant > 0)
+            Positioned(
+              bottom: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _currentVariant == 1
+                      ? '✨ Shiny'
+                      : _variants[_currentVariant].label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          if (_variants.length > 1)
+            Positioned(
+              right: 10,
+              top: 0,
+              bottom: 0,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (int i = 0; i < _variants.length; i++)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      width: 5,
+                      height: _currentVariant == i ? 16 : 5,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(
+                          alpha: _currentVariant == i ? 1.0 : 0.4,
+                        ),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _buildContent();
+    if (widget.outerController == null) return content;
+    return AnimatedBuilder(
+      animation: widget.outerController!,
+      child: content,
+      builder: (context, child) {
+        final page = widget.outerController!.hasClients
+            ? (widget.outerController!.page ?? widget.stageIndex.toDouble())
+            : widget.stageIndex.toDouble();
+        final diff = (page - widget.stageIndex).abs().clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 1.0 - diff * 0.28,
+          child: Opacity(opacity: 1.0 - diff * 0.55, child: child),
         );
       },
     );
