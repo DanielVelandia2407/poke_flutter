@@ -9,12 +9,19 @@ import '../models/type_relations.dart';
 import '../services/pokeapi_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/type_chip.dart';
+import '../widgets/type_particles.dart';
 
 class DetailScreen extends StatefulWidget {
   final String id;
   final PokeApiService service;
+  final String? initialType;
 
-  const DetailScreen({super.key, required this.id, required this.service});
+  const DetailScreen({
+    super.key,
+    required this.id,
+    required this.service,
+    this.initialType,
+  });
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
@@ -80,9 +87,33 @@ class _DetailScreenState extends State<DetailScreen> {
               body: ErrorView(error: snapshot.error, onRetry: _retry),
             );
           }
+          final loadingBase = widget.initialType != null
+              ? TypeChip.colorOf(widget.initialType!)
+              : const Color(0xFF78909C);
+          final loadingDark = Color.lerp(loadingBase, Colors.black, 0.45)!;
           return Scaffold(
-            appBar: AppBar(),
-            body: const Center(child: CircularProgressIndicator()),
+            extendBodyBehindAppBar: true,
+            backgroundColor: loadingBase,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+            ),
+            body: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _LoadingHeader(
+                  id: widget.id,
+                  baseColor: loadingBase,
+                  darkColor: loadingDark,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child: CircularProgressIndicator(color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
           );
         }
 
@@ -215,8 +246,16 @@ class _Header extends StatelessWidget {
         ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
-      child: Column(
+      child: Stack(
         children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+              child: RepaintBoundary(child: TypeParticles(types: detail.types)),
+            ),
+          ),
+          Column(
+            children: [
           SizedBox(
             height: topPadding + 260,
             child: Padding(
@@ -236,6 +275,8 @@ class _Header extends StatelessWidget {
                 ],
               ],
             ),
+          ),
+          ],
           ),
         ],
       ),
@@ -477,15 +518,20 @@ class _EvolutionImageCellState extends State<_EvolutionImageCell>
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _variants.length,
             onPageChanged: (p) => setState(() => _currentVariant = p),
-            itemBuilder: (_, i) => Center(
-              child: Image.network(
+            itemBuilder: (_, i) {
+              final img = Image.network(
                 _variants[i].imageUrl,
                 height: 210,
                 fit: BoxFit.contain,
                 errorBuilder: (_, _, _) =>
                     Image.asset('assets/images/error.png', height: 180),
-              ),
-            ),
+              );
+              return Center(
+                child: i == 0
+                    ? Hero(tag: 'pokemon-${widget.stage.id}', child: img)
+                    : img,
+              );
+            },
           ),
           if (_currentVariant > 0)
             Positioned(
@@ -952,6 +998,62 @@ class _MoveTile extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoadingHeader extends StatelessWidget {
+  final String id;
+  final Color baseColor;
+  final Color darkColor;
+
+  const _LoadingHeader({
+    required this.id,
+    required this.baseColor,
+    required this.darkColor,
+  });
+
+  static const _artworkBase =
+      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [baseColor, darkColor],
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+      ),
+      child: SizedBox(
+        height: topPadding + 260,
+        child: Padding(
+          padding: EdgeInsets.only(top: topPadding),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.catching_pokemon,
+                size: 240,
+                color: Colors.white.withValues(alpha: 0.15),
+              ),
+              Hero(
+                tag: 'pokemon-$id',
+                child: Image.network(
+                  '$_artworkBase/$id.png',
+                  height: 210,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) =>
+                      Image.asset('assets/images/error.png', height: 180),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

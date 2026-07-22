@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (_, index) {
               final pokemon = pokemons[index];
               return GestureDetector(
-                onTap: () => context.push('/pokemon/${pokemon.id}'),
+                onTap: () => context.push('/pokemon/${pokemon.id}', extra: pokemon.type),
                 child: PokemonCard(
                   pokemon: pokemon,
                   isFavorite: widget.favorites.contains(pokemon.id),

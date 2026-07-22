@@ -41,7 +41,7 @@ class FavoritesScreen extends StatelessWidget {
             itemBuilder: (_, index) {
               final pokemon = favoritePokemons[index];
               return GestureDetector(
-                onTap: () => context.push('/pokemon/${pokemon.id}'),
+                onTap: () => context.push('/pokemon/${pokemon.id}', extra: pokemon.type),
                 child: PokemonCard(
                   pokemon: pokemon,
                   isFavorite: true,
