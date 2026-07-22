@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/evolution_stage.dart';
 import '../models/move.dart';
 import '../models/pokemon.dart';
 import '../models/pokemon_detail.dart';
@@ -69,6 +70,43 @@ class PokeApiService {
       throw http.ClientException('Error ${response.statusCode}');
     }
     return Move.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<List<EvolutionStage>> fetchEvolutionChain(String pokemonId) async {
+    final speciesRes = await http
+        .get(Uri.parse('$_baseUrl/pokemon-species/$pokemonId'))
+        .timeout(_timeout);
+    if (speciesRes.statusCode != 200) {
+      throw http.ClientException('Error ${speciesRes.statusCode}');
+    }
+    final chainUrl =
+        (jsonDecode(speciesRes.body) as Map<String, dynamic>)['evolution_chain']['url']
+            as String;
+
+    final chainRes = await http.get(Uri.parse(chainUrl)).timeout(_timeout);
+    if (chainRes.statusCode != 200) {
+      throw http.ClientException('Error ${chainRes.statusCode}');
+    }
+    return _parseChain(
+      (jsonDecode(chainRes.body) as Map<String, dynamic>)['chain']
+          as Map<String, dynamic>,
+    );
+  }
+
+  List<EvolutionStage> _parseChain(Map<String, dynamic> chain) {
+    final stages = <EvolutionStage>[];
+    final url = chain['species']['url'] as String;
+    final id = url.split('/').where((s) => s.isNotEmpty).last;
+    final rawName = chain['species']['name'] as String;
+    final name = rawName
+        .split('-')
+        .map((w) => w[0].toUpperCase() + w.substring(1))
+        .join(' ');
+    stages.add(EvolutionStage(id: id, name: name));
+    for (final next in chain['evolves_to'] as List) {
+      stages.addAll(_parseChain(next as Map<String, dynamic>));
+    }
+    return stages;
   }
 
   Future<Pokemon> _fetchDetail(String url) async {
