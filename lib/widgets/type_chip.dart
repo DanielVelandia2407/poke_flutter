@@ -56,14 +56,22 @@ class TypeChip extends StatelessWidget {
     final key = _labels.containsKey(type.toLowerCase())
         ? type.toLowerCase()
         : 'normal';
+    final background = _colors[key]!;
+    final textColor = background.computeLuminance() > 0.4
+        ? Colors.black87
+        : Colors.white;
     return Chip(
       avatar: SvgPicture.asset(
         'assets/images/icons/$key.svg',
         width: 18,
         height: 18,
       ),
-      label: Text(_labels[key]!),
-      backgroundColor: _colors[key],
+      label: Text(
+        _labels[key]!,
+        style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+      ),
+      backgroundColor: background,
+      side: BorderSide.none,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(50),
       ),
