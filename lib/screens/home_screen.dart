@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../controllers/favorites_controller.dart';
@@ -7,6 +8,7 @@ import '../controllers/pokemons_controller.dart';
 import '../models/pokemon.dart';
 import '../widgets/error_view.dart';
 import '../widgets/pokemon_card.dart';
+import '../widgets/type_filter_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   final FavoritesController favorites;
@@ -26,6 +28,25 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String? _searchError;
   Timer? _debounce;
+  final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_searchQuery.isNotEmpty) return;
+    final position = _scrollController.position;
+    if (position.pixels < position.maxScrollExtent - 400) return;
+    if (widget.pokemons.typeFilter != null) {
+      widget.pokemons.filterLoadMore();
+    } else {
+      _loadMore();
+    }
+  }
 
   void _onSearchChanged(String value) {
     setState(() {
@@ -34,15 +55,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ? 'El nombre solo lleva letras'
           : null;
     });
+    if (_searchQuery.isNotEmpty && widget.pokemons.typeFilter != null) {
+      widget.pokemons.filterByType(null);
+    }
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       widget.pokemons.search(_searchQuery);
     });
   }
 
+  void _onTypeSelected(String type) {
+    if (_searchQuery.isNotEmpty) {
+      _searchController.clear();
+      setState(() {
+        _searchQuery = '';
+        _searchError = null;
+      });
+      _debounce?.cancel();
+      widget.pokemons.search('');
+    }
+    final next = widget.pokemons.typeFilter == type ? null : type;
+    widget.pokemons.filterByType(next);
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
+    _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -55,8 +95,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _grid(List<Pokemon> pokemons, {Widget? footer}) {
+  Widget _grid(List<Pokemon> pokemons, {Widget? footer, ScrollController? controller}) {
     return CustomScrollView(
+      controller: controller,
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -71,11 +112,16 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (_, index) {
               final pokemon = pokemons[index];
               return GestureDetector(
-                onTap: () => context.push('/pokemon/${pokemon.id}', extra: pokemon.type),
+                onTap: () {
+                  precacheImage(
+                    CachedNetworkImageProvider(pokemon.imageUrl),
+                    context,
+                  );
+                  context.push('/pokemon/${pokemon.id}', extra: pokemon.type);
+                },
                 child: PokemonCard(
                   pokemon: pokemon,
-                  isFavorite: widget.favorites.contains(pokemon.id),
-                  onFavoriteTap: () => widget.favorites.toggle(pokemon.id),
+                  favorites: widget.favorites,
                 ),
               );
             },
@@ -102,6 +148,37 @@ class _HomeScreenState extends State<HomeScreen> {
     return _grid(widget.pokemons.searchResults);
   }
 
+  Widget _buildFilterResults() {
+    if (widget.pokemons.filtering) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (widget.pokemons.filterFailed) {
+      return ErrorView(
+        error: widget.pokemons.filterFailure,
+        onRetry: () => widget.pokemons.filterByType(widget.pokemons.typeFilter),
+      );
+    }
+    if (widget.pokemons.filterResults.isEmpty) {
+      return const Center(child: Text('Ningún Pokémon de ese tipo'));
+    }
+    return _grid(
+      widget.pokemons.filterResults,
+      controller: _scrollController,
+      footer: widget.pokemons.filteringMore
+          ? const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,8 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
+              controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Busca un Pokémon...',
                 prefixIcon: const Icon(Icons.search),
@@ -120,15 +198,27 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: _onSearchChanged,
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ListenableBuilder(
+              listenable: widget.pokemons,
+              builder: (_, _) => TypeFilterBar(
+                selected: widget.pokemons.typeFilter,
+                onSelect: _onTypeSelected,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Expanded(
             child: ListenableBuilder(
-              listenable: Listenable.merge([
-                widget.pokemons,
-                widget.favorites,
-              ]),
+              listenable: widget.pokemons,
               builder: (_, _) {
                 if (_searchQuery.isNotEmpty) {
                   return _buildSearchResults();
+                }
+
+                if (widget.pokemons.typeFilter != null) {
+                  return _buildFilterResults();
                 }
 
                 if (widget.pokemons.loading) {
@@ -144,26 +234,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return _grid(
                   widget.pokemons.pokemons,
-                  footer: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: widget.pokemons.loadingMore
-                            ? null
-                            : _loadMore,
-                        child: widget.pokemons.loadingMore
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Cargar más'),
-                      ),
-                    ),
-                  ),
+                  controller: _scrollController,
+                  footer: widget.pokemons.loadingMore
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        )
+                      : null,
                 );
               },
             ),

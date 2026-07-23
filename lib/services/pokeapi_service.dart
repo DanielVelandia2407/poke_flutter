@@ -41,6 +41,22 @@ class PokeApiService {
 
   Future<Pokemon> fetchDetail(String url) => _fetchDetail(url);
 
+  Future<List<({String name, String url})>> fetchTypeMembers(String type) async {
+    final response = await http
+        .get(Uri.parse('$_baseUrl/type/$type'))
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw http.ClientException('Error ${response.statusCode}');
+    }
+    final list = (jsonDecode(response.body) as Map<String, dynamic>)['pokemon']
+        as List;
+    return list.map((entry) {
+      final pokemon = (entry as Map<String, dynamic>)['pokemon']
+          as Map<String, dynamic>;
+      return (name: pokemon['name'] as String, url: pokemon['url'] as String);
+    }).toList();
+  }
+
   Future<PokemonDetail> fetchPokemonDetail(String id) async {
     final response = await http
         .get(Uri.parse('$_baseUrl/pokemon/$id'))

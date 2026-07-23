@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../controllers/favorites_controller.dart';
@@ -41,11 +42,16 @@ class FavoritesScreen extends StatelessWidget {
             itemBuilder: (_, index) {
               final pokemon = favoritePokemons[index];
               return GestureDetector(
-                onTap: () => context.push('/pokemon/${pokemon.id}', extra: pokemon.type),
+                onTap: () {
+                  precacheImage(
+                    CachedNetworkImageProvider(pokemon.imageUrl),
+                    context,
+                  );
+                  context.push('/pokemon/${pokemon.id}', extra: pokemon.type);
+                },
                 child: PokemonCard(
                   pokemon: pokemon,
-                  isFavorite: true,
-                  onFavoriteTap: () => favorites.toggle(pokemon.id),
+                  favorites: favorites,
                 ),
               );
             },

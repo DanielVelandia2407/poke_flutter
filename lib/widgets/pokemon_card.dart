@@ -1,17 +1,17 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../controllers/favorites_controller.dart';
 import '../models/pokemon.dart';
 import 'type_chip.dart';
 
 class PokemonCard extends StatelessWidget {
   final Pokemon pokemon;
-  final bool isFavorite;
-  final VoidCallback onFavoriteTap;
+  final FavoritesController favorites;
 
   const PokemonCard({
     super.key,
     required this.pokemon,
-    required this.isFavorite,
-    required this.onFavoriteTap,
+    required this.favorites,
   });
 
   @override
@@ -63,12 +63,14 @@ class PokemonCard extends StatelessWidget {
                     Flexible(
                       child: Hero(
                         tag: 'pokemon-${pokemon.id}',
-                        child: Image.network(
-                          pokemon.imageUrl,
+                        child: CachedNetworkImage(
+                          imageUrl: pokemon.imageUrl,
                           height: 120,
                           width: 120,
                           fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => Image.asset(
+                          memCacheHeight: 240,
+                          memCacheWidth: 240,
+                          errorWidget: (_, _, _) => Image.asset(
                             'assets/images/error.png',
                             height: 120,
                             width: 120,
@@ -97,14 +99,20 @@ class PokemonCard extends StatelessWidget {
             Positioned(
               top: 4,
               right: 4,
-              child: IconButton(
-                icon: Icon(
-                  isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: isFavorite
-                      ? Colors.redAccent
-                      : Colors.white.withValues(alpha: 0.9),
-                ),
-                onPressed: onFavoriteTap,
+              child: ListenableBuilder(
+                listenable: favorites,
+                builder: (_, _) {
+                  final isFavorite = favorites.contains(pokemon.id);
+                  return IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite
+                          ? Colors.redAccent
+                          : Colors.white.withValues(alpha: 0.9),
+                    ),
+                    onPressed: () => favorites.toggle(pokemon.id),
+                  );
+                },
               ),
             ),
           ],

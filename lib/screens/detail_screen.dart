@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/evolution_stage.dart';
@@ -519,11 +520,12 @@ class _EvolutionImageCellState extends State<_EvolutionImageCell>
             itemCount: _variants.length,
             onPageChanged: (p) => setState(() => _currentVariant = p),
             itemBuilder: (_, i) {
-              final img = Image.network(
-                _variants[i].imageUrl,
+              final img = CachedNetworkImage(
+                imageUrl: _variants[i].imageUrl,
                 height: 210,
                 fit: BoxFit.contain,
-                errorBuilder: (_, _, _) =>
+                memCacheHeight: 420,
+                errorWidget: (_, _, _) =>
                     Image.asset('assets/images/error.png', height: 180),
               );
               return Center(
@@ -1043,11 +1045,12 @@ class _LoadingHeader extends StatelessWidget {
               ),
               Hero(
                 tag: 'pokemon-$id',
-                child: Image.network(
-                  '$_artworkBase/$id.png',
+                child: CachedNetworkImage(
+                  imageUrl: '$_artworkBase/$id.png',
                   height: 210,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) =>
+                  memCacheHeight: 420,
+                  errorWidget: (_, _, _) =>
                       Image.asset('assets/images/error.png', height: 180),
                 ),
               ),

@@ -51,6 +51,11 @@ class TypeChip extends StatelessWidget {
   static Color colorOf(String type) =>
       _colors[type.toLowerCase()] ?? _colors['normal']!;
 
+  static String labelOf(String type) =>
+      _labels[type.toLowerCase()] ?? _labels['normal']!;
+
+  static List<String> get allTypes => _labels.keys.toList();
+
   @override
   Widget build(BuildContext context) {
     final key = _labels.containsKey(type.toLowerCase())
